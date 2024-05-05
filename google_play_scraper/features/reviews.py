@@ -1,5 +1,6 @@
 import json
 from time import sleep
+from copy import deepcopy
 from typing import List, Optional, Tuple
 
 from google_play_scraper import Sort
@@ -8,7 +9,7 @@ from google_play_scraper.constants.regex import Regex
 from google_play_scraper.constants.request import Formats
 from google_play_scraper.utils.request import post
 
-MAX_COUNT_EACH_FETCH = 199
+MAX_COUNT_EACH_FETCH = 100
 
 
 class _ContinuationToken:
@@ -103,18 +104,25 @@ def reviews(
         if _fetch_count > MAX_COUNT_EACH_FETCH:
             _fetch_count = MAX_COUNT_EACH_FETCH
 
-        try:
-            review_items, token = _fetch_review_items(
-                url,
-                app_id,
-                sort,
-                _fetch_count,
-                filter_score_with,
-                filter_device_with,
-                token,
-            )
-        except (TypeError, IndexError):
-            token = None
+        reviews_token = deepcopy(token)
+        review_items = list()
+
+        for _ in range(16):
+            try:
+                review_items, token = _fetch_review_items(
+                    url,
+                    app_id,
+                    sort,
+                    _fetch_count,
+                    filter_score_with,
+                    filter_device_with,
+                    reviews_token,
+                )
+            except (TypeError, IndexError):
+                token = None
+            if token is not None:
+                break
+        else:
             break
 
         for review in review_items:
